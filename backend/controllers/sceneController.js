@@ -1,4 +1,5 @@
 const pool = require('../config/database');
+const { uploadDeviceInfo } = require('../utils/deviceUploader');
 
 const sceneController = {
     // 获取场景列表
@@ -73,16 +74,39 @@ const sceneController = {
 
     // 更新场景信息
     updateScene: async (req, res) => {
+        const connection = await pool.getConnection();
         try {
+            await connection.beginTransaction();
+            
             const { id } = req.params;
             const { name, room_x_length, room_y_length, emergencyContact } = req.body;
-            await pool.query(
+            
+            // 更新场景信息
+            await connection.query(
                 'UPDATE scene_info SET name = ?, room_x_length = ?, room_y_length = ?, emergencyContact = ? WHERE id = ?',
                 [name, room_x_length, room_y_length, emergencyContact, id]
             );
+            
+            // 更新该场景下所有设备的deltaX_room和deltaY_room
+            await connection.query(
+                'UPDATE device_info SET deltaX_room = ?, deltaY_room = ? WHERE sceneId = ?',
+                [room_x_length, room_y_length, id]
+            );
+            
+            await connection.commit();
             res.json({ message: '场景更新成功' });
         } catch (error) {
+            await connection.rollback();
             res.status(500).json({ message: '更新场景失败', error: error.message });
+        } finally {
+            connection.release();
+        }
+        // 查询该场景下的所有设备
+        const [devices] = await connection.query('SELECT * FROM device_info WHERE sceneId = ?', [id]);
+        
+        // 对每个设备调用uploadDeviceInfo
+        for (const device of devices) {
+            await uploadDeviceInfo(device);
         }
     },
 

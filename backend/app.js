@@ -48,6 +48,9 @@ app.use((err, req, res, next) => {
 
 module.exports = app;
 
+// 初始化定时任务服务
+require('./services/scheduler');
+
 const PORT = process.env.PORT || 5150;
 app.listen(PORT, () => {
     console.log(`服务器运行在端口 ${PORT}`);

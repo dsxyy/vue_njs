@@ -8,7 +8,25 @@
         </div>
       </template>
 
-      <el-table :data="devices" style="width: 100%" v-loading="loading">
+      <div class="search-container" style="margin-bottom: 20px">
+        <el-input
+          v-model="searchParams.mac"
+          placeholder="设备序列号"
+          style="width: 200px; margin-right: 10px"
+          clearable
+        />
+        <el-input
+          v-model="searchParams.name"
+          placeholder="设备名称"
+          style="width: 200px; margin-right: 10px"
+          clearable
+        />
+        <el-button type="primary" @click="handleSearch">查询</el-button>
+        <el-button @click="handleReset">重置</el-button>
+      </div>
+
+      <div class="scroll-container">
+        <el-table :data="devices" style="width: 150%" v-loading="loading">
         <el-table-column prop="name" label="设备名称" />
         <el-table-column prop="status" label="设备状态">
           <template #default="scope">
@@ -17,18 +35,60 @@
             </el-tag>
           </template>
         </el-table-column>
-        <el-table-column prop="mac" label="设备序列号" />
+        <el-table-column prop="mac" label="设备序列号" width="180" />
         <el-table-column prop="version" label="版本" />
         <el-table-column prop="radarHeight" label="设备高度" />
         <el-table-column prop="downAngle" label="下倾角度" />
         <el-table-column prop="scene_name" label="所属场景" />
-        <el-table-column label="操作" width="200">
+        <el-table-column label="短信推送" width="90">
+          <template #default="scope">
+            <el-switch
+              v-model="scope.row.is_sendMessage"
+              :active-value="1"
+              :inactive-value="0"
+              disabled
+            />
+          </template>
+        </el-table-column>
+        <el-table-column label="挥手触发" width="90">
+          <template #default="scope">
+            <el-switch
+              v-model="scope.row.wave_trigger"
+              :active-value="1"
+              :inactive-value="0"
+              disabled
+            />
+          </template>
+        </el-table-column>
+        <el-table-column label="跌倒触发" width="90">
+          <template #default="scope">
+            <el-switch
+              v-model="scope.row.fall_trigger"
+              :active-value="1"
+              :inactive-value="0"
+              disabled
+            />
+          </template>
+        </el-table-column>
+        <el-table-column label="趟地检测" width="90">
+          <template #default="scope">
+            <el-switch
+              v-model="scope.row.LongLayDetect"
+              :active-value="1"
+              :inactive-value="0"
+              disabled
+            />
+          </template>
+        </el-table-column>
+        <el-table-column label="操作" width="280">
           <template #default="scope">
             <el-button size="small" @click="handleEdit(scope.row)">编辑</el-button>
             <el-button size="small" type="danger" @click="handleDelete(scope.row)">删除</el-button>
+            <el-button size="small" type="primary" @click="handleDownloadData(scope.row)">下载数据</el-button>
           </template>
         </el-table-column>
       </el-table>
+      </div>
 
       <div class="pagination-container">
         <el-pagination
@@ -70,6 +130,34 @@
             />
           </el-select>
         </el-form-item>
+        <el-form-item label="短信推送">
+          <el-switch
+            v-model="deviceForm.is_sendMessage"
+            :active-value="1"
+            :inactive-value="0"
+          />
+        </el-form-item>
+        <el-form-item label="挥手触发">
+          <el-switch
+            v-model="deviceForm.wave_trigger"
+            :active-value="1"
+            :inactive-value="0"
+          />
+        </el-form-item>
+        <el-form-item label="跌倒触发">
+          <el-switch
+            v-model="deviceForm.fall_trigger"
+            :active-value="1"
+            :inactive-value="0"
+          />
+        </el-form-item>
+        <el-form-item label="趟地检测">
+          <el-switch
+            v-model="deviceForm.LongLayDetect"
+            :active-value="1"
+            :inactive-value="0"
+          />
+        </el-form-item>
       </el-form>
       <template #footer>
         <span class="dialog-footer">
@@ -78,6 +166,29 @@
         </span>
       </template>
     </el-dialog>
+
+    <!-- 下载数据对话框 -->
+    <el-dialog
+      v-model="downloadDialogVisible"
+      title="选择下载日期"
+      width="30%"
+    >
+      <el-date-picker
+        v-model="selectedDate"
+        type="date"
+        placeholder="选择日期"
+        :disabled-date="disabledDate"
+        value-format="YYYY-M-D"
+        style="width: 100%"
+      />
+      <template #footer>
+        <span class="dialog-footer">
+          <el-button @click="downloadDialogVisible = false">取消</el-button>
+          <el-button type="primary" @click="handleDownload">确定</el-button>
+        </span>
+      </template>
+    </el-dialog>
+
   </div>
 </template>
 
@@ -94,6 +205,10 @@ const dialogType = ref('add')
 const currentPage = ref(1)
 const pageSize = ref(10)
 const total = ref(0)
+const searchParams = ref({
+  mac: '',
+  name: ''
+})
 
 const deviceForm = ref({
   name: '',
@@ -113,6 +228,22 @@ const deviceForm = ref({
   deltaY_room: 0,
   radar_version: 1
 })
+
+const downloadDialogVisible = ref(false)
+const selectedDate = ref('')
+const disabledDate = (time) => {
+  const today = new Date()
+  const fiveDaysAgo = new Date(today)
+  fiveDaysAgo.setDate(today.getDate() - 5)
+  
+  // 格式化为YYYY-M-DD（不带前导零）
+  const formatDate = (date) => {
+    return `${date.getFullYear()}-${date.getMonth() + 1}-${date.getDate()}`
+  }
+  
+  const timeDate = new Date(time)
+  return timeDate > today || timeDate < fiveDaysAgo
+}
 
 // 获取场景列表
 const fetchScenes = async () => {
@@ -144,7 +275,8 @@ const fetchDevices = async () => {
     const response = await axios.get('/api/devices', {
       params: {
         page: currentPage.value,
-        pageSize: pageSize.value
+        pageSize: pageSize.value,
+        ...searchParams.value
       }
     })
     if (response.data.code === 200) {
@@ -244,6 +376,60 @@ const handleSubmit = async () => {
   }
 }
 
+const handleSearch = () => {
+  currentPage.value = 1
+  fetchDevices()
+}
+
+const handleReset = () => {
+  searchParams.value = {
+    mac: '',
+    name: ''
+  }
+  currentPage.value = 1
+  fetchDevices()
+}
+
+const currentDevice = ref(null)
+
+const handleDownloadData = (device) => {
+  currentDevice.value = device
+  selectedDate.value = ''
+  downloadDialogVisible.value = true
+}
+
+const handleDownload = async () => {
+  if (!selectedDate.value || !currentDevice.value) {
+    ElMessage.warning('请选择日期')
+    return
+  }
+
+  try {
+    // 保持与后端一致的路径格式：YYYY-M-DD
+    const formattedDate = selectedDate.value
+    const fileUrl = `https://mmradar.inchitech.com/data/${currentDevice.value.mac}/${formattedDate}.tar.gz`
+    // 创建下载链接
+    const link = document.createElement('a')
+    link.href = fileUrl
+    const fileName = `${currentDevice.value.mac}_${formattedDate}.tar.gz`
+    link.setAttribute('download', fileName)
+    console.log(link)
+    document.body.appendChild(link)
+    link.click()
+    
+    setTimeout(() => {
+      document.body.removeChild(link)
+    }, 100)
+    
+    ElMessage.success('下载链接已创建')
+    
+    downloadDialogVisible.value = false
+  } catch (error) {
+    console.error('下载数据失败:', error)
+    ElMessage.error(`下载失败: ${error.message}`)
+  }
+}
+
 const handleCurrentChange = (val) => {
   currentPage.value = val
   fetchDevices()
@@ -266,10 +452,23 @@ onMounted(() => {
   align-items: center;
 }
 
+.search-container {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
 .pagination-container {
   margin-top: 20px;
   display: flex;
   justify-content: center;
+}
+
+.scroll-container {
+  overflow-x: auto;
+  margin-bottom: 20px;
+  border: 1px solid #ebeef5;
+  border-radius: 4px;
 }
 
 .dialog-footer {

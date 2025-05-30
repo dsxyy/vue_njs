@@ -1,4 +1,5 @@
 const pool = require('../config/database');
+const deviceUploader = require('../utils/deviceUploader');
 
 const deviceController = {
     // 获取设备列表
@@ -8,21 +9,38 @@ const deviceController = {
             const pageSize = parseInt(req.query.pageSize) || 10;
             const offset = (page - 1) * pageSize;
 
+            const { mac, name } = req.query;
+            let whereClause = 'WHERE d.showAble = 1';
+            const queryParams = [];
+            
+            if (mac) {
+                whereClause += ' AND d.mac = ?';
+                queryParams.push(mac);
+            }
+            
+            if (name) {
+                whereClause += ' AND d.name LIKE ?';
+                queryParams.push(`%${name}%`);
+            }
+
             // 获取总记录数
             const [countResult] = await pool.query(
-                'SELECT COUNT(*) as total FROM device_info WHERE showAble = 1'
+                `SELECT COUNT(*) as total
+                FROM device_info d
+                ${whereClause}`,
+                queryParams
             );
             const total = parseInt(countResult[0].total) || 0;
 
             // 获取分页数据，并关联场景信息
             const [rows] = await pool.query(
-                `SELECT d.*, s.name as scene_name 
-                FROM device_info d 
-                LEFT JOIN scene_info s ON d.sceneId = s.id 
-                WHERE d.showAble = 1 
-                ORDER BY d.status asc , d.id DESC 
+                `SELECT d.*, s.name as scene_name
+                FROM device_info d
+                LEFT JOIN scene_info s ON d.sceneId = s.id
+                ${whereClause}
+                ORDER BY d.status asc , d.id DESC
                 LIMIT ? OFFSET ?`,
-                [pageSize, offset]
+                [...queryParams, pageSize, offset]
             );
             
             res.json({
@@ -46,16 +64,19 @@ const deviceController = {
     // 创建新设备
     createDevice: async (req, res) => {
         try {
-            const { name, mac, radarHeight, downAngle, sceneId, deltaX_room, deltaY_room } = req.body;
+            const { name, mac, radarHeight, downAngle, sceneId, deltaX_room, deltaY_room,
+                    is_sendMessage, wave_trigger, fall_trigger, LongLayDetect } = req.body;
 
             const [result] = await pool.query(
                 `INSERT INTO device_info (
                     name, mac, radarHeight, downAngle, status, showAble,
                     port, bandWidth, nframes, version, isUpdate, percentage,
                     bgimg, sceneId, azi_angle, x_location, y_location,
-                    deltaX_room, deltaY_room, radar_version
-                ) VALUES (?, ?, ?, ?, 1, 1, '', '', '', '', 0, 100, '', ?, '', 0, 0, ?, ?, 1)`,
-                [name, mac, radarHeight, downAngle, sceneId, deltaX_room, deltaY_room]
+                    deltaX_room, deltaY_room, radar_version,
+                    is_sendMessage, wave_trigger, fall_trigger, LongLayDetect
+                ) VALUES (?, ?, ?, ?, 1, 1, '', '', '', '', 0, 100, '', ?, '', 0, 0, ?, ?, 1, ?, ?, ?, ?)`,
+                [name, mac, radarHeight, downAngle, sceneId, deltaX_room, deltaY_room,
+                 is_sendMessage || 1, wave_trigger || 1, fall_trigger || 1, LongLayDetect || 1]
             );
 
             res.status(201).json({
@@ -77,15 +98,31 @@ const deviceController = {
     updateDevice: async (req, res) => {
         try {
             const { id } = req.params;
-            const { name, radarHeight, downAngle } = req.body;
+            console.log('设备数据：',req.body)
+            const { name, radarHeight, downAngle, sceneId, x_location, y_location,
+                    deltaX_room, deltaY_room, is_sendMessage, wave_trigger,
+                    fall_trigger, LongLayDetect } = req.body;
 
             await pool.query(
-                `UPDATE device_info SET 
-                    name = ?, radarHeight = ?, downAngle = ?
+                `UPDATE device_info SET
+                    name = ?,
+                    radarHeight = ?,
+                    downAngle = ?,
+                    sceneId = ?,
+                    x_location = ?,
+                    y_location = ?,
+                    deltaX_room = ?,
+                    deltaY_room = ?,
+                    is_sendMessage = ?,
+                    wave_trigger = ?,
+                    fall_trigger = ?,
+                    LongLayDetect = ?
                 WHERE id = ?`,
-                [name, radarHeight, downAngle, id]
+                [name, radarHeight, downAngle, sceneId, x_location, y_location,
+                 deltaX_room, deltaY_room, is_sendMessage, wave_trigger,
+                 fall_trigger, LongLayDetect, id]
             );
-
+            deviceUploader.uploadDeviceInfo({...req.body, id});
             res.json({
                 code: 200,
                 message: '设备更新成功'
@@ -151,7 +188,7 @@ const deviceController = {
                 error: error.message 
             });
         }
-    }
+    },
 };
 
-module.exports = deviceController; 
+module.exports = deviceController;

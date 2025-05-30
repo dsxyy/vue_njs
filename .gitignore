@@ -153,3 +153,4 @@ public
 # resource file
 resource/
 backend/uploads/versions/
+backend/radarData/radar_data/

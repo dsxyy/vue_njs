@@ -17,4 +17,4 @@ router.put('/:id', deviceController.updateDevice);
 // 删除设备
 router.delete('/:id', deviceController.deleteDevice);
 
-module.exports = router; 
+module.exports = router;

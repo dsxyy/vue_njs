@@ -31,7 +31,11 @@ create table if not exists device_info
     y_location    decimal(4, 2)                          null,
     deltaX_room   decimal(4, 2)                          null,
     deltaY_room   decimal(4, 2)                          null,
-    radar_version int                                    null
+    radar_version int                                    null,
+    is_sendMessage int                      default 1     not null comment '1是开启短信推送服务，0是关闭短信推送服务',
+    wave_trigger   int                      default 1     not null comment '1是开启挥手触发语音交互，0是关闭挥手触发语音交互',
+    fall_trigger   int                      default 1     not null comment '1是开启跌倒触发语音交互，0是关闭跌倒触发语音交互',
+    LongLayDetect  int                      default 1     not null comment '1是开启趟地检测，0是关闭趟地检测'
 )
     row_format = DYNAMIC;
 
