@@ -150,7 +150,69 @@ public
 .yarn/install-state.gz
 .pnp.*
 
-# resource file
+# Resource files and uploads
 resource/
 backend/uploads/versions/
 backend/radarData/radar_data/
+backend/uploads/
+backend/log/
+
+# Symbolic links (软链接)
+# 忽略所有软链接文件
+**/*.lnk
+**/*.symlink
+**/*.link
+
+# PM2 files
+.pm2/
+ecosystem.config.js
+
+# Redis dump files
+dump.rdb
+*.rdb
+
+# Docker files
+.dockerignore
+docker-compose.override.yml
+
+# Backup files
+*.bak
+*.backup
+*.old
+*.orig
+
+# Compressed files
+*.zip
+*.tar.gz
+*.rar
+*.7z
+
+# IDE specific files
+*.swp
+*.swo
+*~
+
+# OS generated files
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+$RECYCLE.BIN/
+
+# Linux specific
+*~
+
+# macOS specific
+.AppleDouble
+.LSOverride
+Icon
+._*
+
+# Windows specific
+*.lnk
+*.url
+desktop.ini
+
+# radarData
+backend/radarData/radar_data/
+# nginx
+backend/nginx/

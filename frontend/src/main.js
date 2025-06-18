@@ -11,7 +11,8 @@ import config from '../config.json';  // 新增：引入配置文件
 axios.defaults.baseURL = config.API_BASE_URL;  // 替换原硬编码地址
 axios.defaults.timeout = 5000
 axios.defaults.headers.common['Content-Type'] = 'application/json;charset=utf-8'
-axios.defaults.headers.common['Accept'] = 'application/json;charset=utf-8'
+axios.defaults.headers.common['Accept'] = 'application/json, text/plain, */*'
+axios.defaults.withCredentials = true // 允许跨域请求携带 cookie
 
 // 添加请求拦截器
 axios.interceptors.request.use(
@@ -36,7 +37,9 @@ axios.interceptors.response.use(
   },
   error => {
     if (error.response && error.response.status === 401) {
+      // 清除所有认证信息
       localStorage.removeItem('token')
+      localStorage.removeItem('tokenExpiresAt')
       router.push('/login')
     }
     return Promise.reject(error)

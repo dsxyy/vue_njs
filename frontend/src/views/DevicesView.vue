@@ -460,8 +460,45 @@ onMounted(() => {
 
 .pagination-container {
   margin-top: 20px;
+  padding: 10px;
   display: flex;
   justify-content: center;
+  align-items: center;
+  background-color: #fff;
+  border-top: 1px solid #EBEEF5;
+}
+
+:deep(.el-pagination) {
+  margin: 0;
+  padding: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  font-size: 14px;
+}
+
+:deep(.el-pagination .btn-prev),
+:deep(.el-pagination .btn-next),
+:deep(.el-pagination .el-pager li) {
+  height: 32px;
+  line-height: 32px;
+  min-width: 32px;
+  background-color: #fff;
+  border: 1px solid #dcdfe6;
+  margin: 0 4px;
+  border-radius: 4px;
+}
+
+:deep(.el-pagination .el-pager li.active) {
+  background-color: #409EFF;
+  color: #fff;
+  border-color: #409EFF;
+}
+
+:deep(.el-pagination .el-pager li:hover) {
+  color: #409EFF;
+  border-color: #409EFF;
 }
 
 .scroll-container {

@@ -3,6 +3,9 @@ const router = express.Router();
 const userController = require('../controllers/userController');
 const auth = require('../middleware/auth');
 
+// // 验证码路由
+// router.get('/captcha', userController.getCaptcha);
+
 // 登录路由
 router.post('/login', userController.login);
 

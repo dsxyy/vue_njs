@@ -2,13 +2,37 @@ const pool = require('../config/database');
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const { comparePassword } = require('../utils/password');
+const { createCaptcha, verifyCaptcha } = require('../utils/captcha');
 
 const userController = {
+    // 生成验证码
+    getCaptcha: (req, res) => {
+        const captcha = createCaptcha();
+        // 将验证码文本存储在session中
+        req.session.captcha = captcha.text;
+        
+        console.log('生成验证码:', captcha.text);
+        console.log('Session ID:', req.sessionID);
+        console.log('Session captcha:', req.session.captcha);
+        
+        res.type('svg');
+        res.status(200).send(captcha.data);
+    },
+
     // 登录验证
     login: async (req, res) => {
         try {
-            const { username, password } = req.body;
+            const { username, password, captcha } = req.body;
             
+            // 跳过验证码校验
+            // if (!verifyCaptcha(req.session.captcha, captcha)) {
+            //     return res.json({
+            //         code: 401,
+            //         message: '验证码错误'
+            //     });
+            // }
+            // req.session.captcha = null;
+
             // 从sys_user_info表中查询用户
             const [rows] = await pool.query(
                 'SELECT * FROM sys_user_info WHERE name = ?',
@@ -37,7 +61,7 @@ const userController = {
             const token = jwt.sign(
                 { id: user.id, username: user.name },
                 'your-secret-key', // 请在生产环境中使用环境变量存储密钥
-                { expiresIn: '24h' }
+                { expiresIn: '30m' } // 设置为30分钟过期
             );
             
             res.json({

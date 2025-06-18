@@ -4,23 +4,28 @@
   "description": "Management System Backend",
   "main": "app.js",
   "scripts": {
-    "start": "pm2 start ecosystem.config.js --env production",
     "dev": "nodemon app.js",
-    "stop": "pm2 stop management-system",
-    "restart": "pm2 restart management-system",
-    "logs": "pm2 logs management-system",
-    "status": "pm2 status management-system"
+    "pm2:start": "pm2 start ecosystem.config.js --env production",
+    "pm2:stop": "pm2 stop management-system",
+    "pm2:restart": "pm2 restart management-system",
+    "pm2:logs": "pm2 logs management-system",
+    "pm2:status": "pm2 status management-system",
+    "pm2:delete": "pm2 delete management-system"
   },
   "dependencies": {
     "axios": "^1.9.0",
     "bcryptjs": "^2.4.3",
+    "connect-redis": "^9.0.0",
     "cors": "^2.8.5",
     "dotenv": "^16.5.0",
     "express": "^4.21.2",
+    "express-session": "^1.18.1",
     "jsonwebtoken": "^9.0.2",
     "multer": "^1.4.5-lts.2",
     "mysql2": "^3.14.1",
-    "node-cron": "^3.0.2"
+    "node-cron": "^3.0.2",
+    "redis": "^5.5.6",
+    "svg-captcha": "^1.4.0"
   },
   "devDependencies": {
     "nodemon": "^3.0.1"

@@ -1,6 +1,7 @@
 const express = require('express');
 const cors = require('cors');
 const path = require('path');
+const session = require('express-session');
 const versionRoutes = require('./routes/version');
 const sceneRoutes = require('./routes/scene');
 const userRoutes = require('./routes/user');
@@ -9,11 +10,27 @@ const params = require('./config/params');
 
 const app = express();
 
+// 配置 session
+app.use(session({
+    secret: 'your-secret-key', // 在生产环境中使用环境变量
+    resave: false,
+    saveUninitialized: true,
+    cookie: {
+        secure: true, // 强制使用secure cookie，因为前端使用HTTPS
+        maxAge: 30 * 60 * 1000, // 30分钟过期
+        sameSite: 'none' // 允许跨域请求
+    }
+}));
+
 // 中间件
+app.use(express.json());
+app.use(express.urlencoded({ extended: true }));
+
 app.use(cors({
-  origin: `${params.ACCESS_URL}`,
-  methods: ['GET', 'POST', 'PUT', 'DELETE'],
-  allowedHeaders: ['Content-Type', 'Authorization']
+    origin: true, // 允许所有来源
+    methods: ['GET', 'POST', 'PUT', 'DELETE'],
+    allowedHeaders: ['Content-Type', 'Authorization'],
+    credentials: true // 允许跨域请求携带 cookie
 }));
 
 // 设置请求体解析

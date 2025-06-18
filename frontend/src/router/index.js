@@ -59,10 +59,17 @@ const router = createRouter({
 // 路由守卫
 router.beforeEach((to, from, next) => {
   const token = localStorage.getItem('token')
+  const tokenExpiresAt = localStorage.getItem('tokenExpiresAt')
   
-  if (to.meta.requiresAuth && !token) {
+  // 检查token是否存在且未过期
+  const isTokenValid = token && tokenExpiresAt && new Date().getTime() < parseInt(tokenExpiresAt)
+  
+  if (to.meta.requiresAuth && !isTokenValid) {
+    // 如果token不存在或已过期，清除所有认证信息并重定向到登录页
+    localStorage.removeItem('token')
+    localStorage.removeItem('tokenExpiresAt')
     next('/login')
-  } else if (to.path === '/login' && token) {
+  } else if (to.path === '/login' && isTokenValid) {
     next('/')
   } else {
     next()

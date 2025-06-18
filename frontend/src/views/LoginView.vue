@@ -30,11 +30,12 @@
 </template>
 
 <script setup>
-import { ref, reactive } from 'vue'
+import { ref, reactive, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
-import { User, Lock } from '@element-plus/icons-vue'
+import { User, Lock, Key } from '@element-plus/icons-vue'
 import axios from 'axios'
+import config from '../../config.json'
 
 const router = useRouter()
 const loginFormRef = ref(null)
@@ -63,7 +64,12 @@ const handleLogin = async () => {
     
     const response = await axios.post('/api/users/login', loginForm)
     if (response.data.code === 200) {
+      // 设置token和过期时间（30分钟）
+      const expiresIn = 30 * 60 * 1000 // 30分钟
+      const expiresAt = new Date().getTime() + expiresIn
       localStorage.setItem('token', response.data.token)
+      localStorage.setItem('tokenExpiresAt', expiresAt.toString())
+      
       ElMessage.success('登录成功')
       router.push('/')
     } else {
@@ -79,6 +85,10 @@ const handleLogin = async () => {
     loading.value = false
   }
 }
+
+onMounted(() => {
+  // refreshCaptcha()
+})
 </script>
 
 <style scoped>
@@ -103,5 +113,16 @@ const handleLogin = async () => {
   margin: 0;
   font-size: 24px;
   color: #303133;
+}
+
+.captcha-container {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+}
+
+.captcha-img {
+  height: 40px;
+  cursor: pointer;
 }
 </style> 
