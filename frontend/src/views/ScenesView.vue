@@ -49,16 +49,10 @@
           </template>
         </el-table-column>
         <el-table-column prop="emergencyContact" label="紧急联系人" min-width="120" />
-        <el-table-column label="关联用户" min-width="200">
+        <el-table-column prop="family_name" label="所属家庭" min-width="120">
           <template #default="scope">
-            <el-tag 
-              v-for="user in scope.row.users" 
-              :key="user.id" 
-              class="user-tag"
-              effect="dark"
-            >
-              {{ user.name }}
-            </el-tag>
+            <el-tag v-if="scope.row.family_name" type="success">{{ scope.row.family_name }}</el-tag>
+            <span v-else class="text-muted">未分配</span>
           </template>
         </el-table-column>
         <el-table-column label="设备列表">
@@ -66,14 +60,11 @@
             <el-button size="small" @click="handleViewDevices(scope.row)">查看设备</el-button>
           </template>
         </el-table-column>
-        <el-table-column label="操作" width="300" fixed="right">
+        <el-table-column label="操作" width="200" fixed="right">
           <template #default="scope">
             <el-button-group>
               <el-button size="small" type="primary" @click="handleEdit(scope.row)">
                 <el-icon><Edit /></el-icon>编辑
-              </el-button>
-              <el-button size="small" type="success" @click="handleAssignUsers(scope.row)">
-                <el-icon><Share /></el-icon>分配用户
               </el-button>
               <el-button size="small" type="danger" @click="handleDelete(scope.row)">
                 <el-icon><Delete /></el-icon>删除
@@ -113,42 +104,21 @@
         <el-form-item label="紧急联系人">
           <el-input v-model="form.emergencyContact" placeholder="请输入紧急联系人" />
         </el-form-item>
-      </el-form>
-      <template #footer>
-        <span class="dialog-footer">
-          <el-button @click="dialogVisible = false">取消</el-button>
-          <el-button type="primary" @click="handleSubmit">确定</el-button>
-        </span>
-      </template>
-    </el-dialog>
-
-    <!-- 分配用户对话框 -->
-    <el-dialog
-      title="分配用户"
-      v-model="userDialogVisible"
-      width="500px"
-    >
-      <el-form label-width="100px">
-        <el-form-item label="选择用户">
-          <el-select
-            v-model="selectedUsers"
-            multiple
-            placeholder="请选择用户"
-            style="width: 100%"
-          >
+        <el-form-item label="所属家庭">
+          <el-select v-model="form.family_id" placeholder="请选择所属家庭" clearable style="width: 100%">
             <el-option
-              v-for="user in allUsers"
-              :key="user.id"
-              :label="user.name"
-              :value="user.id"
+              v-for="family in allFamilies"
+              :key="family.id"
+              :label="family.name"
+              :value="family.id"
             />
           </el-select>
         </el-form-item>
       </el-form>
       <template #footer>
         <span class="dialog-footer">
-          <el-button @click="userDialogVisible = false">取消</el-button>
-          <el-button type="primary" @click="handleUserSubmit">确定</el-button>
+          <el-button @click="dialogVisible = false">取消</el-button>
+          <el-button type="primary" @click="handleSubmit">确定</el-button>
         </span>
       </template>
     </el-dialog>
@@ -180,16 +150,13 @@
 import { ref, onMounted } from 'vue'
 import axios from 'axios'
 import { ElMessage, ElMessageBox, ElPagination } from 'element-plus'
-import { Plus, Search, Refresh, Edit, Share, Delete } from '@element-plus/icons-vue'
+import { Plus, Search, Refresh, Edit, Delete } from '@element-plus/icons-vue'
 
 const scenes = ref([])
-const allUsers = ref([])
+const allFamilies = ref([])
 const loading = ref(false)
 const dialogVisible = ref(false)
-const userDialogVisible = ref(false)
 const dialogTitle = ref('添加场景')
-const selectedUsers = ref([])
-const currentSceneId = ref(null)
 const currentPage = ref(1)
 const pageSize = ref(10)
 const total = ref(0)
@@ -197,7 +164,8 @@ const form = ref({
   name: '',
   room_x_length: 0,
   room_y_length: 0,
-  emergencyContact: ''
+  emergencyContact: '',
+  family_id: null
 })
 
 // 添加搜索表单
@@ -224,19 +192,6 @@ const fetchScenes = async () => {
     if (response.data.code === 200) {
       scenes.value = response.data.data || []
       total.value = Number(response.data.total) || 0
-      
-      // 批量获取所有场景的用户信息
-      if (scenes.value.length > 0) {
-        const sceneIds = scenes.value.map(scene => scene.id)
-        const usersResponse = await axios.post('/api/scenes/users/batch', { sceneIds })
-        if (usersResponse.data.code === 200) {
-          const usersMap = usersResponse.data.data
-          scenes.value = scenes.value.map(scene => ({
-            ...scene,
-            users: usersMap[scene.id] || []
-          }))
-        }
-      }
     } else {
       ElMessage.error(response.data.message || '获取场景列表失败')
       scenes.value = []
@@ -251,18 +206,18 @@ const fetchScenes = async () => {
   }
 }
 
-const fetchAllUsers = async () => {
+const fetchAllFamilies = async () => {
   try {
-    const response = await axios.get('/api/users/all')
+    const response = await axios.get('/api/families/all')
     if (response.data.code === 200) {
-      allUsers.value = response.data.data
+      allFamilies.value = response.data.data
     } else {
-      console.error('获取用户列表失败:', response.data.message)
-      ElMessage.error('获取用户列表失败')
+      console.error('获取家庭列表失败:', response.data.message)
+      ElMessage.error('获取家庭列表失败')
     }
   } catch (error) {
-    console.error('获取用户列表失败:', error)
-    ElMessage.error('获取用户列表失败')
+    console.error('获取家庭列表失败:', error)
+    ElMessage.error('获取家庭列表失败')
   }
 }
 
@@ -272,7 +227,8 @@ const handleAdd = () => {
     name: '',
     room_x_length: 0,
     room_y_length: 0,
-    emergencyContact: ''
+    emergencyContact: '',
+    family_id: null
   }
   dialogVisible.value = true
 }
@@ -298,26 +254,6 @@ const handleDelete = async (row) => {
       console.error('删除场景失败:', error)
       ElMessage.error('删除失败')
     }
-  }
-}
-
-const handleAssignUsers = async (row) => {
-  currentSceneId.value = row.id
-  selectedUsers.value = row.users.map(user => user.id)
-  userDialogVisible.value = true
-}
-
-const handleUserSubmit = async () => {
-  try {
-    await axios.post(`/api/scenes/${currentSceneId.value}/users`, {
-      userIds: selectedUsers.value
-    })
-    ElMessage.success('分配用户成功')
-    userDialogVisible.value = false
-    fetchScenes()
-  } catch (error) {
-    console.error('分配用户失败:', error)
-    ElMessage.error('分配用户失败')
   }
 }
 
@@ -375,7 +311,7 @@ const handleViewDevices = async (row) => {
 
 onMounted(() => {
   fetchScenes()
-  fetchAllUsers()
+  fetchAllFamilies()
 })
 </script>
 
@@ -392,11 +328,6 @@ onMounted(() => {
 
 .search-form {
   margin-bottom: 20px;
-}
-
-.user-tag {
-  margin-right: 5px;
-  margin-bottom: 5px;
 }
 
 .pagination-container {

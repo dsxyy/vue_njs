@@ -6,6 +6,7 @@ const versionRoutes = require('./routes/version');
 const sceneRoutes = require('./routes/scene');
 const userRoutes = require('./routes/user');
 const deviceRouter = require('./routes/device');
+const familyRoutes = require('./routes/family');
 const params = require('./config/params');
 
 const app = express();
@@ -53,6 +54,7 @@ app.use('/api/versions', versionRoutes);
 app.use('/api/scenes', sceneRoutes);
 app.use('/api/users', userRoutes);
 app.use('/api/devices', deviceRouter);
+app.use('/api/families', familyRoutes);
 
 // 错误处理中间件
 app.use((err, req, res, next) => {

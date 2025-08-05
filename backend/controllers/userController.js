@@ -140,10 +140,10 @@ const userController = {
     // 创建新用户
     createUser: async (req, res) => {
         try {
-            const { name, phone, association_device, shareAccount, parentId, privileges } = req.body;
+            const { name, phone, association_device, shareAccount, parentId, privileges, remark } = req.body;
             const [result] = await pool.query(
-                'INSERT INTO user_info (name, phone, association_device, shareAccount, parentId, privileges, showable) VALUES (?, ?, ?, ?, ?, ?, 1)',
-                [name, phone, association_device, shareAccount, parentId, privileges]
+                'INSERT INTO user_info (name, phone, association_device, shareAccount, parentId, privileges, remark, showable) VALUES (?, ?, ?, ?, ?, ?, ?, 1)',
+                [name, phone, association_device, shareAccount, parentId, privileges, remark]
             );
             res.status(201).json({ id: result.insertId, message: '用户创建成功' });
         } catch (error) {
@@ -155,10 +155,10 @@ const userController = {
     updateUser: async (req, res) => {
         try {
             const { id } = req.params;
-            const { name, phone, association_device, shareAccount, parentId, privileges } = req.body;
+            const { name, phone, association_device, shareAccount, parentId, privileges, remark } = req.body;
             await pool.query(
-                'UPDATE user_info SET name = ?, phone = ?, association_device = ?, shareAccount = ?, parentId = ?, privileges = ? WHERE id = ?',
-                [name, phone, association_device, shareAccount, parentId, privileges, id]
+                'UPDATE user_info SET name = ?, phone = ?, association_device = ?, shareAccount = ?, parentId = ?, privileges = ?, remark = ? WHERE id = ?',
+                [name, phone, association_device, shareAccount, parentId, privileges, remark, id]
             );
             res.json({ message: '用户更新成功' });
         } catch (error) {
@@ -181,6 +181,18 @@ const userController = {
                     message: '用户不存在或已被删除'
                 });
             }
+            
+            // 同时删除该用户在 scene_user_info 表中的所有关联
+            await pool.query(
+                'UPDATE scene_user_info SET del_flag = 1 WHERE userid = ?',
+                [id]
+            );
+            
+            // 同时删除该用户在 user_family_info 表中的所有关联
+            await pool.query(
+                'UPDATE user_family_info SET del_flag = 1 WHERE user_id = ?',
+                [id]
+            );
             
             res.json({
                 code: 200,
@@ -210,70 +222,7 @@ const userController = {
         }
     },
 
-    // 获取已分配的用户列表
-    getAssignedUsers: async (req, res) => {
-        try {
-            const { id } = req.params;
-            const [rows] = await pool.query(`
-                SELECT s.* FROM scene_info s
-                INNER JOIN scene_user_info sui ON s.id = sui.scene_id
-                WHERE sui.userid = ?
-                ORDER BY s.id DESC
-            `, [id]);
-            res.json({
-                code: 200,
-                message: '获取已分配用户列表成功',
-                data: rows
-            });
-        } catch (error) {
-            console.error('获取已分配用户列表失败:', error);
-            res.status(500).json({
-                code: 500,
-                message: '获取已分配用户列表失败',
-                error: error.message
-            });
-        }
-    },
 
-    // 更新用户分配
-    updateUserAssignment: async (req, res) => {
-        const connection = await pool.getConnection();
-        try {
-            const { id } = req.params;
-            const sceneId = req.body.sceneIds || [];
-
-            // 开始事务
-            await connection.beginTransaction();
-
-            try {
-                await connection.query('DELETE FROM scene_user_info WHERE userid =?', [id]);
-                for (const scene of sceneId) {
-                    await connection.query('INSERT INTO scene_user_info (scene_id, userid) VALUES (?, ?)', [scene, id]);
-                }
-                // 提交事务
-                await connection.commit();
-
-                res.json({
-                    code: 200,
-                    message: '更新用户分配成功'
-                });
-            } catch (error) {
-                // 回滚事务
-                await connection.rollback();
-                throw error;
-            }
-        } catch (error) {
-            console.error('更新用户分配失败:', error);
-            res.status(500).json({
-                code: 500,
-                message: '更新用户分配失败',
-                error: error.message
-            });
-        } finally {
-            // 释放连接
-            connection.release();
-        }
-    },
 
     // 获取所有用户列表（不分页，用于分配功能）
     getAllUsers: async (req, res) => {
@@ -292,6 +241,67 @@ const userController = {
             res.status(500).json({ 
                 code: 500,
                 message: '获取用户列表失败', 
+                error: error.message 
+            });
+        }
+    },
+
+    // 获取用户所属的家庭
+    getUserFamilies: async (req, res) => {
+        try {
+            const { id } = req.params;
+            
+            // 查询用户所属的家庭（包括作为创建者和共享者）
+            const [rows] = await pool.query(
+                `SELECT f.id, f.name, uf.privileges as userRole
+                 FROM family_info f
+                 JOIN user_family_info uf ON f.id = uf.family_id
+                 WHERE uf.user_id = ? AND f.del_flag = 0 AND uf.del_flag = 0
+                 ORDER BY f.id DESC`,
+                [id]
+            );
+            
+            // 为每个家庭添加详细信息
+            for (const family of rows) {
+                // 获取家庭创建者
+                const [ownerRows] = await pool.query(
+                    `SELECT u.id, u.name FROM user_family_info uf 
+                     JOIN user_info u ON uf.user_id = u.id 
+                     WHERE uf.family_id = ? AND uf.privileges = 0 AND uf.del_flag = 0`,
+                    [family.id]
+                );
+                family.owner = ownerRows[0] || null;
+                
+                // 获取家庭共享者
+                const [sharedRows] = await pool.query(
+                    `SELECT u.id, u.name FROM user_family_info uf 
+                     JOIN user_info u ON uf.user_id = u.id 
+                     WHERE uf.family_id = ? AND uf.privileges = 1 AND uf.del_flag = 0`,
+                    [family.id]
+                );
+                family.sharedUsers = sharedRows;
+                
+                // 获取家庭房间
+                const [scenes] = await pool.query(
+                    'SELECT id, name FROM scene_info WHERE family_id = ?',
+                    [family.id]
+                );
+                family.scenes = scenes;
+                
+                // 设置用户角色文本
+                family.userRoleText = family.userRole === 0 ? '创建者' : '成员';
+            }
+            
+            res.json({
+                code: 200,
+                message: '获取用户家庭列表成功',
+                data: rows
+            });
+        } catch (error) {
+            console.error('获取用户家庭列表失败:', error);
+            res.status(500).json({ 
+                code: 500,
+                message: '获取用户家庭列表失败', 
                 error: error.message 
             });
         }

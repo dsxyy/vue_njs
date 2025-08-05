@@ -189,6 +189,42 @@ const deviceController = {
             });
         }
     },
+
+    // 获取设备告警信息
+    getDeviceWarns: async (req, res) => {
+        try {
+            const { deviceId, date } = req.query;
+            
+            if (!deviceId || !date) {
+                return res.status(400).json({
+                    code: 400,
+                    message: '设备ID和日期参数不能为空'
+                });
+            }
+
+            // 根据日期查询告警信息，按currenttime倒序排列
+            const [rows] = await pool.query(
+                `SELECT * FROM device_warns 
+                WHERE deviceid = ? 
+                AND DATE(currenttime) = ? 
+                ORDER BY currenttime DESC`,
+                [deviceId, date]
+            );
+
+            res.json({
+                code: 200,
+                message: '获取告警信息成功',
+                data: rows
+            });
+        } catch (error) {
+            console.error('获取告警信息失败:', error);
+            res.status(500).json({ 
+                code: 500,
+                message: '获取告警信息失败', 
+                error: error.message 
+            });
+        }
+    },
 };
 
 module.exports = deviceController;

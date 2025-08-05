@@ -41,6 +41,12 @@
       >
         <el-table-column prop="name" label="用户名" min-width="120" />
         <el-table-column prop="phone" label="手机号" min-width="120" />
+        <el-table-column prop="remark" label="备注" min-width="150">
+          <template #default="scope">
+            <span v-if="scope.row.remark">{{ scope.row.remark }}</span>
+            <span v-else style="color: #999;">暂无备注</span>
+          </template>
+        </el-table-column>
         <el-table-column prop="privileges" label="权限" min-width="100">
           <template #default="scope">
             <el-tag :type="getPrivilegeType(scope.row.privileges)" effect="dark">
@@ -54,8 +60,8 @@
               <el-button size="small" type="primary" @click="handleEdit(scope.row)">
                 <el-icon><Edit /></el-icon>编辑
               </el-button>
-              <el-button size="small" type="success" @click="handleAssign(scope.row)">
-                <el-icon><Share /></el-icon>分配场景
+              <el-button size="small" type="success" @click="handleViewFamilies(scope.row)">
+                <el-icon><House /></el-icon>查看家庭
               </el-button>
               <el-button size="small" type="danger" @click="handleDelete(scope.row)">
                 <el-icon><Delete /></el-icon>删除
@@ -97,6 +103,9 @@
             <el-option label="被拒绝" :value="3" />
           </el-select>
         </el-form-item>
+        <el-form-item label="备注">
+          <el-input v-model="form.remark" type="textarea" :rows="3" placeholder="请输入备注信息" />
+        </el-form-item>
       </el-form>
       <template #footer>
         <span class="dialog-footer">
@@ -106,103 +115,47 @@
       </template>
     </el-dialog>
 
-    <!-- 分配用户对话框 -->
+    <!-- 查看家庭对话框 -->
     <el-dialog
-      title="分配用户"
-      v-model="assignUserDialogVisible"
+      title="用户家庭信息"
+      v-model="viewFamiliesDialogVisible"
       width="800px"
     >
-      <div class="transfer-container">
-        <div class="transfer-panel">
-          <div class="transfer-header">未分配用户</div>
-          <el-table
-            :data="unassignedUsers"
-            style="width: 100%"
-            height="300"
-            @selection-change="handleUnassignedSelectionChange"
-          >
-            <el-table-column type="selection" width="55" />
-            <el-table-column prop="name" label="用户名" />
-            <el-table-column prop="phone" label="手机号" />
-          </el-table>
-        </div>
-        <div class="transfer-buttons">
-          <el-button type="primary" @click="moveToAssigned">
-            <el-icon><ArrowRight /></el-icon>
-          </el-button>
-          <el-button type="primary" @click="moveToUnassigned">
-            <el-icon><ArrowLeft /></el-icon>
-          </el-button>
-        </div>
-        <div class="transfer-panel">
-          <div class="transfer-header">已分配用户</div>
-          <el-table
-            :data="assignedUsers"
-            style="width: 100%"
-            height="300"
-            @selection-change="handleAssignedSelectionChange"
-          >
-            <el-table-column type="selection" width="55" />
-            <el-table-column prop="name" label="用户名" />
-            <el-table-column prop="phone" label="手机号" />
-          </el-table>
-        </div>
+      <div v-if="userFamilies.length === 0" class="no-families">
+        <el-empty description="该用户暂无家庭信息" />
+      </div>
+      <div v-else class="families-list">
+        <el-card v-for="family in userFamilies" :key="family.id" class="family-card">
+          <template #header>
+            <div class="family-header">
+              <span class="family-name">{{ family.name }}</span>
+              <el-tag :type="family.userRole === 0 ? 'success' : 'info'" size="small">
+                {{ family.userRoleText }}
+              </el-tag>
+            </div>
+          </template>
+          <div class="family-content">
+            <div class="family-info">
+              <p><strong>创建者：</strong>{{ family.owner?.name || '未知' }}</p>
+              <p><strong>成员：</strong>
+                <el-tag v-for="user in family.sharedUsers" :key="user.id" size="small" class="member-tag">
+                  {{ user.name }}
+                </el-tag>
+                <span v-if="family.sharedUsers.length === 0">无</span>
+              </p>
+              <p><strong>房间：</strong>
+                <el-tag v-for="scene in family.scenes" :key="scene.id" size="small" type="warning" class="scene-tag">
+                  {{ scene.name }}
+                </el-tag>
+                <span v-if="family.scenes.length === 0">无</span>
+              </p>
+            </div>
+          </div>
+        </el-card>
       </div>
       <template #footer>
         <span class="dialog-footer">
-          <!-- 修改为 assignUserDialogVisible -->
-          <el-button @click="assignUserDialogVisible = false">取消</el-button> 
-          <el-button type="primary" @click="handleAssignSubmit">确定</el-button>
-        </span>
-      </template>
-    </el-dialog>
-    <!-- 分配场景对话框 -->
-    <el-dialog
-      title="分配场景"
-      v-model="assignSceneDialogVisible"
-      width="800px"
-    >
-      <div class="transfer-container">
-        <div class="transfer-panel">
-          <div class="transfer-header">未分配场景</div>
-          <el-table
-            :data="unassignedScenes"
-            style="width: 100%"
-            height="300"
-            @selection-change="handleUnassignedSelectionChange"
-          >
-            <el-table-column type="selection" width="55" />
-            <el-table-column prop="name" label="场景名称" />
-            <!-- 可以根据实际场景数据添加更多列 -->
-          </el-table>
-        </div>
-        <div class="transfer-buttons">
-          <el-button type="primary" @click="moveToAssigned">
-            <el-icon><ArrowRight /></el-icon>
-          </el-button>
-          <el-button type="primary" @click="moveToUnassigned">
-            <el-icon><ArrowLeft /></el-icon>
-          </el-button>
-        </div>
-        <div class="transfer-panel">
-          <div class="transfer-header">已分配场景</div>
-          <el-table
-            :data="assignedScenes"
-            style="width: 100%"
-            height="300"
-            @selection-change="handleAssignedSelectionChange"
-          >
-            <el-table-column type="selection" width="55" />
-            <el-table-column prop="name" label="场景名称" />
-            <!-- 可以根据实际场景数据添加更多列 -->
-          </el-table>
-        </div>
-      </div>
-      <template #footer>
-        <span class="dialog-footer">
-          <!-- 修改为 assignSceneDialogVisible -->
-          <el-button @click="assignSceneDialogVisible = false">取消</el-button> 
-          <el-button type="primary" @click="handleAssignSubmit">确定</el-button>
+          <el-button @click="viewFamiliesDialogVisible = false">关闭</el-button>
         </span>
       </template>
     </el-dialog>
@@ -211,32 +164,24 @@
 
 <script setup>
 import { ref, computed, onMounted } from 'vue'
-import { ElMessage, ElMessageBox, ElTable, ElTableColumn, ElButton, ElButtonGroup, ElTag, ElCard, ElForm, ElFormItem, ElInput, ElSelect, ElOption, ElDialog, ElPagination } from 'element-plus'
+import { ElMessage, ElMessageBox, ElTable, ElTableColumn, ElButton, ElButtonGroup, ElTag, ElCard, ElForm, ElFormItem, ElInput, ElSelect, ElOption, ElDialog, ElPagination, ElEmpty } from 'element-plus'
 import 'element-plus/dist/index.css'
 import axios from 'axios'
-import { ArrowRight, ArrowLeft, Edit, Share, Delete } from '@element-plus/icons-vue'
+import { Edit, Delete, House } from '@element-plus/icons-vue'
 
 const users = ref([])
 const loading = ref(false)
 const dialogVisible = ref(false)
 const dialogTitle = ref('添加用户')
-const currentSceneId = ref(null)
-const unassignedUsers = ref([])
-const assignedUsers = ref([])
-const assignUserDialogVisible = ref(false)
 const currentPage = ref(1)
 const pageSize = ref(10)
 const total = ref(0)
 const form = ref({
   name: '',
   phone: '',
-  privileges: 1
+  privileges: 1,
+  remark: ''
 })
-
-const assignedScenes = ref([])
-const unassignedScenes = ref([])
-const selectedUnassignedScenes = ref([])
-const selectedAssignedScenes = ref([])
 
 // 添加搜索表单
 const searchForm = ref({
@@ -244,6 +189,11 @@ const searchForm = ref({
   phone: '',
   privileges: ''
 })
+
+// 查看家庭相关变量
+const viewFamiliesDialogVisible = ref(false)
+const userFamilies = ref([])
+const currentUserId = ref(null)
 
 const fetchUsers = async () => {
   loading.value = true
@@ -310,7 +260,8 @@ const handleAdd = () => {
   form.value = {
     name: '',
     phone: '',
-    privileges: 1
+    privileges: 1,
+    remark: ''
   }
   dialogVisible.value = true
 }
@@ -354,64 +305,18 @@ const handleSubmit = async () => {
   }
 }
 
-const assignSceneDialogVisible = ref(false)
-
-const handleAssign = async (row) => {
-  currentSceneId.value = row.id
+const handleViewFamilies = async (row) => {
+  currentUserId.value = row.id
   try {
-    // 使用getAllScenes API获取所有场景
-    const response = await axios.get('/api/scenes/all')
-    const allScenes = response.data.data
-    const assignedResponse = await axios.get(`/api/users/${row.id}/assigned`)
-    const assignedIds = assignedResponse.data.data.map(scene => scene.id)
-    
-    assignedScenes.value = allScenes.filter(scene => assignedIds.includes(scene.id))
-    unassignedScenes.value = allScenes.filter(scene => !assignedIds.includes(scene.id))
-    
-    assignSceneDialogVisible.value = true
+    const response = await axios.get(`/api/users/${row.id}/families`)
+    if (response.data.code === 200) {
+      userFamilies.value = response.data.data
+      viewFamiliesDialogVisible.value = true
+    } else {
+      ElMessage.error(response.data.message || '获取家庭列表失败')
+    }
   } catch (error) {
-    ElMessage.error('获取场景列表失败')
-  }
-}
-
-const handleUnassignedSelectionChange = (selection) => {
-  selectedUnassignedScenes.value = selection
-}
-
-const handleAssignedSelectionChange = (selection) => {
-  selectedAssignedScenes.value = selection
-}
-
-const moveToAssigned = () => {
-  if (selectedUnassignedScenes.value.length === 0) return
-  
-  assignedScenes.value = [...assignedScenes.value, ...selectedUnassignedScenes.value]
-  unassignedScenes.value = unassignedScenes.value.filter(
-    scene => !selectedUnassignedScenes.value.some(selected => selected.id === scene.id)
-  )
-  selectedUnassignedScenes.value = []
-}
-
-const moveToUnassigned = () => {
-  if (selectedAssignedScenes.value.length === 0) return
-  
-  unassignedScenes.value = [...unassignedScenes.value, ...selectedAssignedScenes.value]
-  assignedScenes.value = assignedScenes.value.filter(
-    scene => !selectedAssignedScenes.value.some(selected => selected.id === scene.id)
-  )
-  selectedAssignedScenes.value = []
-}
-
-const handleAssignSubmit = async () => {
-  try {
-    const assignedIds = assignedScenes.value.map(scene => scene.id)
-    await axios.post(`/api/users/${currentSceneId.value}/assign`, {
-      sceneIds: assignedIds
-    })
-    ElMessage.success('场景分配成功')
-    assignSceneDialogVisible.value = false
-  } catch (error) {
-    ElMessage.error('场景分配失败')
+    ElMessage.error('获取家庭列表失败')
   }
 }
 
@@ -533,5 +438,54 @@ onMounted(() => {
   display: flex;
   flex-direction: column;
   gap: 10px;
+}
+
+/* 查看家庭对话框样式 */
+.no-families {
+  text-align: center;
+  padding: 40px 0;
+}
+
+.families-list {
+  max-height: 400px;
+  overflow-y: auto;
+}
+
+.family-card {
+  margin-bottom: 16px;
+}
+
+.family-card:last-child {
+  margin-bottom: 0;
+}
+
+.family-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.family-name {
+  font-weight: bold;
+  font-size: 16px;
+}
+
+.family-content {
+  padding: 8px 0;
+}
+
+.family-info p {
+  margin: 8px 0;
+  line-height: 1.5;
+}
+
+.member-tag {
+  margin-right: 4px;
+  margin-bottom: 4px;
+}
+
+.scene-tag {
+  margin-right: 4px;
+  margin-bottom: 4px;
 }
 </style>

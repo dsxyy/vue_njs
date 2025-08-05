@@ -48,6 +48,14 @@ const routes = [
       requiresAuth: true
     }
   },
+  {
+    path: '/families',
+    name: 'Families',
+    component: () => import('../views/FamilyView.vue'),
+    meta: {
+      requiresAuth: true
+    }
+  },
   
 ]
 

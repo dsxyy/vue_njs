@@ -7,23 +7,22 @@ const sceneController = {
         try {
             // 构建搜索条件
             const { name, emergency_contact, page = 1, limit = 10 } = req.query;
-            let whereClause = '';
+            let whereClause = 'WHERE s.del_flag = 0';
             const params = [];
             
             if (name || emergency_contact) {
-                whereClause = 'WHERE ';
                 const conditions = [];
                 
                 if (name) {
-                    conditions.push('name LIKE ?');
+                    conditions.push('s.name LIKE ?');
                     params.push(`%${name}%`);
                 }
                 if (emergency_contact) {
-                    conditions.push('emergencyContact LIKE ?');
+                    conditions.push('s.emergencyContact LIKE ?');
                     params.push(`%${emergency_contact}%`);
                 }
                 
-                whereClause += conditions.join(' AND ');
+                whereClause += ' AND ' + conditions.join(' AND ');
             }
 
             // 计算分页
@@ -31,14 +30,18 @@ const sceneController = {
 
             // 获取总数
             const [countResult] = await pool.query(
-                `SELECT COUNT(*) as total FROM scene_info ${whereClause}`,
+                `SELECT COUNT(*) as total FROM scene_info s ${whereClause}`,
                 params
             );
             const total = countResult[0].total;
 
-            // 获取分页数据
+            // 获取分页数据，关联家庭信息
             const [rows] = await pool.query(
-                `SELECT * FROM scene_info ${whereClause} ORDER BY id DESC LIMIT ? OFFSET ?`,
+                `SELECT s.*, f.name as family_name 
+                FROM scene_info s 
+                LEFT JOIN family_info f ON s.family_id = f.id AND f.del_flag = 0
+                ${whereClause} 
+                ORDER BY s.id DESC LIMIT ? OFFSET ?`,
                 [...params, parseInt(limit), offset]
             );
             
@@ -61,11 +64,29 @@ const sceneController = {
     // 创建新场景
     createScene: async (req, res) => {
         try {
-            const { name, room_x_length, room_y_length, emergencyContact } = req.body;
+            const { name, room_x_length, room_y_length, emergencyContact, family_id } = req.body;
             const [result] = await pool.query(
-                'INSERT INTO scene_info (name, room_x_length, room_y_length, emergencyContact) VALUES (?, ?, ?, ?)',
-                [name, room_x_length, room_y_length, emergencyContact]
+                'INSERT INTO scene_info (name, room_x_length, room_y_length, emergencyContact, family_id, del_flag) VALUES (?, ?, ?, ?, ?, 0)',
+                [name, room_x_length, room_y_length, emergencyContact, family_id || null]
             );
+            
+            // 如果指定了家庭ID，需要同步更新 scene_user_info 表
+            if (family_id) {
+                // 获取该家庭的所有成员（包括创建者和共享者）
+                const [familyUsers] = await pool.query(
+                    `SELECT user_id FROM user_family_info WHERE family_id = ? AND del_flag = 0`,
+                    [family_id]
+                );
+                
+                // 为每个家庭成员创建房间关联
+                for (const user of familyUsers) {
+                    await pool.query(
+                        'INSERT INTO scene_user_info (scene_id, userid, del_flag) VALUES (?, ?, 0)',
+                        [result.insertId, user.user_id]
+                    );
+                }
+            }
+            
             res.status(201).json({ id: result.insertId, message: '场景创建成功' });
         } catch (error) {
             res.status(500).json({ message: '创建场景失败', error: error.message });
@@ -79,12 +100,19 @@ const sceneController = {
             await connection.beginTransaction();
             
             const { id } = req.params;
-            const { name, room_x_length, room_y_length, emergencyContact } = req.body;
+            const { name, room_x_length, room_y_length, emergencyContact, family_id } = req.body;
+            
+            // 获取更新前的家庭ID，用于比较是否需要更新 scene_user_info
+            const [oldScene] = await connection.query(
+                'SELECT family_id FROM scene_info WHERE id = ?',
+                [id]
+            );
+            const oldFamilyId = oldScene[0]?.family_id;
             
             // 更新场景信息
             await connection.query(
-                'UPDATE scene_info SET name = ?, room_x_length = ?, room_y_length = ?, emergencyContact = ? WHERE id = ?',
-                [name, room_x_length, room_y_length, emergencyContact, id]
+                'UPDATE scene_info SET name = ?, room_x_length = ?, room_y_length = ?, emergencyContact = ?, family_id = ? WHERE id = ? AND del_flag = 0',
+                [name, room_x_length, room_y_length, emergencyContact, family_id || null, id]
             );
             
             // 更新该场景下所有设备的deltaX_room和deltaY_room
@@ -92,6 +120,30 @@ const sceneController = {
                 'UPDATE device_info SET deltaX_room = ?, deltaY_room = ? WHERE sceneId = ?',
                 [room_x_length, room_y_length, id]
             );
+            
+            // 如果家庭ID发生了变化，需要更新 scene_user_info 表
+            if (oldFamilyId !== family_id) {
+                // 先删除该房间的所有用户关联
+                await connection.query(
+                    'UPDATE scene_user_info SET del_flag = 1 WHERE scene_id = ?',
+                    [id]
+                );
+                
+                // 如果新的家庭ID不为空，为该家庭的所有成员创建房间关联
+                if (family_id) {
+                    const [familyUsers] = await connection.query(
+                        `SELECT user_id FROM user_family_info WHERE family_id = ? AND del_flag = 0`,
+                        [family_id]
+                    );
+                    
+                    for (const user of familyUsers) {
+                        await connection.query(
+                            'INSERT INTO scene_user_info (scene_id, userid, del_flag) VALUES (?, ?, 0)',
+                            [id, user.user_id]
+                        );
+                    }
+                }
+            }
             
             await connection.commit();
             res.json({ message: '场景更新成功' });
@@ -101,6 +153,7 @@ const sceneController = {
         } finally {
             connection.release();
         }
+        
         // 查询该场景下的所有设备
         const [devices] = await connection.query('SELECT * FROM device_info WHERE sceneId = ?', [id]);
         
@@ -110,11 +163,15 @@ const sceneController = {
         }
     },
 
-    // 删除场景
+    // 删除场景（软删除）
     deleteScene: async (req, res) => {
         try {
             const { id } = req.params;
-            await pool.query('DELETE FROM scene_info WHERE id = ?', [id]);
+            await pool.query('UPDATE scene_info SET del_flag = 1 WHERE id = ?', [id]);
+            
+            // 同时删除该房间的所有用户关联
+            await pool.query('UPDATE scene_user_info SET del_flag = 1 WHERE scene_id = ?', [id]);
+            
             res.json({ message: '场景删除成功' });
         } catch (error) {
             res.status(500).json({ message: '删除场景失败', error: error.message });
@@ -125,7 +182,7 @@ const sceneController = {
     getSceneById: async (req, res) => {
         try {
             const { id } = req.params;
-            const [rows] = await pool.query('SELECT * FROM scene_info WHERE id = ?', [id]);
+            const [rows] = await pool.query('SELECT * FROM scene_info WHERE id = ? AND del_flag = 0', [id]);
             if (rows.length === 0) {
                 return res.status(404).json({ message: '场景不存在' });
             }
@@ -135,131 +192,11 @@ const sceneController = {
         }
     },
 
-    // 获取场景的用户列表
-    getSceneUsers: async (req, res) => {
-        try {
-            const sceneId = req.params.id;
-            const [users] = await pool.query(`
-                SELECT u.* FROM user_info u
-                INNER JOIN scene_user_info sui ON u.id = sui.userid
-                WHERE sui.scene_id = ? GROUP BY sui.userid,sui.scene_id
-            `, [sceneId]);
-            
-            res.json({
-                code: 200,
-                message: '获取场景用户列表成功',
-                data: users
-            });
-        } catch (error) {
-            console.error('获取场景用户列表失败:', error);
-            res.status(500).json({
-                code: 500,
-                message: '获取场景用户列表失败',
-                error: error.message
-            });
-        }
-    },
-
-    // 更新场景的用户列表
-    updateSceneUsers: async (req, res) => {
-        const connection = await pool.getConnection();
-        try {
-            const sceneId = req.params.id;
-            const { userIds } = req.body;
-
-            // 开始事务
-            await connection.beginTransaction();
-
-            try {
-                // 删除原有的用户关联
-                await connection.query('DELETE FROM scene_user_info WHERE scene_id = ?', [sceneId]);
-
-                // 插入新的用户关联
-                if (userIds && userIds.length > 0) {
-                    const values = userIds.map(userId => [sceneId, userId]);
-                    await connection.query('INSERT INTO scene_user_info (scene_id, userid) VALUES ?', [values]);
-                }
-
-                // 提交事务
-                await connection.commit();
-
-                res.json({
-                    code: 200,
-                    message: '更新场景用户列表成功'
-                });
-            } catch (error) {
-                // 回滚事务
-                await connection.rollback();
-                throw error;
-            }
-        } catch (error) {
-            console.error('更新场景用户列表失败:', error);
-            res.status(500).json({
-                code: 500,
-                message: '更新场景用户列表失败',
-                error: error.message
-            });
-        } finally {
-            // 释放连接
-            connection.release();
-        }
-    },
-
-    // 批量获取场景的用户列表
-    getScenesUsersBatch: async (req, res) => {
-        try {
-            const { sceneIds } = req.body;
-            if (!Array.isArray(sceneIds) || sceneIds.length === 0) {
-                return res.json({
-                    code: 200,
-                    message: '获取场景用户列表成功',
-                    data: {}
-                });
-            }
-
-            const [rows] = await pool.query(`
-                SELECT sui.scene_id, u.* 
-                FROM scene_user_info sui
-                INNER JOIN user_info u ON u.id = sui.userid
-                WHERE sui.scene_id IN (?)
-                GROUP BY sui.userid, sui.scene_id
-            `, [sceneIds]);
-
-            // 将结果转换为以场景ID为键的映射
-            const usersMap = {};
-            rows.forEach(row => {
-                const sceneId = row.scene_id;
-                if (!usersMap[sceneId]) {
-                    usersMap[sceneId] = [];
-                }
-                usersMap[sceneId].push({
-                    id: row.id,
-                    name: row.name,
-                    phone: row.phone,
-                    privileges: row.privileges
-                });
-            });
-            
-            res.json({
-                code: 200,
-                message: '获取场景用户列表成功',
-                data: usersMap
-            });
-        } catch (error) {
-            console.error('批量获取场景用户列表失败:', error);
-            res.status(500).json({
-                code: 500,
-                message: '批量获取场景用户列表失败',
-                error: error.message
-            });
-        }
-    },
-
     // 获取所有场景列表（不分页，用于分配功能）
     getAllScenes: async (req, res) => {
         try {
             const [rows] = await pool.query(
-                'SELECT id, name FROM scene_info ORDER BY id DESC'
+                'SELECT id, name FROM scene_info WHERE del_flag = 0 ORDER BY id DESC'
             );
             
             res.json({

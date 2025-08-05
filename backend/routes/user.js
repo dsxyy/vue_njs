@@ -17,7 +17,6 @@ router.post('/', userController.createUser);
 // 带ID的用户路由
 router.put('/:id', userController.updateUser);
 router.delete('/:id', userController.deleteUser);
-router.get('/:id/assigned', userController.getAssignedUsers);
-router.post('/:id/assign', userController.updateUserAssignment);
+router.get('/:id/families', userController.getUserFamilies);
 
 module.exports = router; 

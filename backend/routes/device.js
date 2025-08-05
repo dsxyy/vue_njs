@@ -5,6 +5,9 @@ const deviceController = require('../controllers/deviceController');
 // 获取设备列表
 router.get('/', deviceController.getDevices);
 
+// 获取设备告警信息
+router.get('/warns', deviceController.getDeviceWarns);
+
 // 创建新设备
 router.post('/', deviceController.createDevice);
 
