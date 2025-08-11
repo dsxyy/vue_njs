@@ -10,7 +10,7 @@ def main():
     url = "http://10.1.12.144:8099/smartlab/control/upload"  # TODO: 替换为实际IP和端口
     payload = {
         "deviceID": 'QG9JOARJBV0CWYG',
-        "datetime": '2025-8-4',
+        "datetime": '2025-8-5',
         "url": "http://218.94.159.100:8088/uploads"  # TODO: 替换为实际上传URL
     }
 
