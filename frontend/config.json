@@ -1,4 +1,4 @@
 {
-    "API_BASE_URL": "https://mmradar.inchitech.com",
-    "RESOURCE_URL": "https://mmradar.inchitech.com/resource/"
+    "API_BASE_URL": "https://test.mmradar.inchitech.com:8990/",
+    "RESOURCE_URL": "https://test.mmradar.inchitech.com:8990/resource/"
 }

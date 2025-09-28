@@ -10,11 +10,12 @@ export default defineConfig({
     port: 5100,
     allowedHosts: [
       'localhost',
-      'mmradar.inchitech.com'
+      'test.mmradar.inchitech.com',
+      '172.16.20.202'
     ],
     proxy: {
       '/api': {
-        target: config.API_BASE_URL.replace('http://', 'https://'),  // 强制使用HTTPS
+        target: config.API_BASE_URL,
         changeOrigin: true,
         secure: false,  // 允许无效证书
         //  rewrite: (path) => path.replace(/^\/api/, '')

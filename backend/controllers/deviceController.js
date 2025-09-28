@@ -14,8 +14,8 @@ const deviceController = {
             const queryParams = [];
             
             if (mac) {
-                whereClause += ' AND d.mac = ?';
-                queryParams.push(mac);
+                whereClause += ' AND d.mac LIKE ?';
+                queryParams.push(`%${mac}%`);
             }
             
             if (name) {
@@ -61,38 +61,6 @@ const deviceController = {
         }
     },
 
-    // 创建新设备
-    createDevice: async (req, res) => {
-        try {
-            const { name, mac, radarHeight, downAngle, sceneId, deltaX_room, deltaY_room,
-                    is_sendMessage, wave_trigger, fall_trigger, LongLayDetect } = req.body;
-
-            const [result] = await pool.query(
-                `INSERT INTO device_info (
-                    name, mac, radarHeight, downAngle, status, showAble,
-                    port, bandWidth, nframes, version, isUpdate, percentage,
-                    bgimg, sceneId, azi_angle, x_location, y_location,
-                    deltaX_room, deltaY_room, radar_version,
-                    is_sendMessage, wave_trigger, fall_trigger, LongLayDetect
-                ) VALUES (?, ?, ?, ?, 1, 1, '', '', '', '', 0, 100, '', ?, '', 0, 0, ?, ?, 1, ?, ?, ?, ?)`,
-                [name, mac, radarHeight, downAngle, sceneId, deltaX_room, deltaY_room,
-                 is_sendMessage || 1, wave_trigger || 1, fall_trigger || 1, LongLayDetect || 1]
-            );
-
-            res.status(201).json({
-                code: 200,
-                message: '设备创建成功',
-                data: { id: result.insertId }
-            });
-        } catch (error) {
-            console.error('创建设备失败:', error);
-            res.status(500).json({ 
-                code: 500,
-                message: '创建设备失败', 
-                error: error.message 
-            });
-        }
-    },
 
     // 更新设备信息
     updateDevice: async (req, res) => {
@@ -101,7 +69,7 @@ const deviceController = {
             console.log('设备数据：',req.body)
             const { name, radarHeight, downAngle, sceneId, x_location, y_location,
                     deltaX_room, deltaY_room, is_sendMessage, wave_trigger,
-                    fall_trigger, LongLayDetect } = req.body;
+                    fall_trigger, LongLayDetect, SelfCalib, language } = req.body;
 
             await pool.query(
                 `UPDATE device_info SET
@@ -116,13 +84,15 @@ const deviceController = {
                     is_sendMessage = ?,
                     wave_trigger = ?,
                     fall_trigger = ?,
-                    LongLayDetect = ?
+                    LongLayDetect = ?,
+                    SelfCalib = ?,
+                    language = ?
                 WHERE id = ?`,
                 [name, radarHeight, downAngle, sceneId, x_location, y_location,
                  deltaX_room, deltaY_room, is_sendMessage, wave_trigger,
-                 fall_trigger, LongLayDetect, id]
+                 fall_trigger, LongLayDetect, SelfCalib, language, id]
             );
-            deviceUploader.uploadDeviceInfo({...req.body, id});
+            deviceUploader.uploadDeviceInfo(req.body.mac);
             res.json({
                 code: 200,
                 message: '设备更新成功'

@@ -7,8 +7,8 @@ module.exports = {
         database: 'pose'
     },
     dev: {
-        host: '172.16.20.202', 
-        port: 3306,
+        host: '172.16.30.12', 
+        port: 13306,
         user: 'inchi',
         password: 'inchi@123',
         database: 'pose'

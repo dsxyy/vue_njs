@@ -1,27 +1,41 @@
 const axios = require('axios');
-const proxy_url = 'http://10.1.12.144:8099';
-const upload_url = 'http://218.94.159.100:8088/uploads'
+const pool = require('../config/database');
+const params = require('../config/params');
 /**
  * 上传设备信息到智能实验室系统
- * @param {Object} params - 设备参数对象
+ * @param {string} mac - 设备MAC地址
  */
-function uploadDeviceInfo(params) {
+async function uploadDeviceInfo(mac) {
     try {
-        // 将 params 的每个值转换为字符串，当值为 null 或空时返回 ""
+        // 根据mac查询设备信息
+        const [rows] = await pool.query(
+            'SELECT * FROM device_info WHERE mac = ?',
+            [mac]
+        );
+        
+        if (rows.length === 0) {
+            console.error('未找到MAC地址为', mac, '的设备');
+            return;
+        }
+        
+        const deviceInfo = rows[0];
+        
+        // 将设备信息的每个值转换为字符串，当值为 null 或空时返回 ""
         const stringifiedParams = {};
-        for (let key in params) {
-            if (params.hasOwnProperty(key)) {
-                if (params[key] === null || params[key] === '') {
+        for (let key in deviceInfo) {
+            if (deviceInfo.hasOwnProperty(key)) {
+                if (deviceInfo[key] === null || deviceInfo[key] === '') {
                     stringifiedParams[key] = "";
                 } else {
-                    stringifiedParams[key] = String(params[key]);
+                    stringifiedParams[key] = String(deviceInfo[key]);
                 }
             }
         }
+        
         console.log('/smartlab/control/adddevice')
         console.log('stringifiedParams:', stringifiedParams);
 
-        const url = proxy_url + `/smartlab/control/adddevice`;
+        const url = params.PROXY_URL + `/smartlab/control/adddevice`;
         return axios.post(url, stringifiedParams)
             .then(response => {
                 console.log('设备信息上传成功:', response.data);
@@ -41,14 +55,14 @@ function uploadDeviceInfo(params) {
  * @param params.deatetime 拷贝的回放日期 日期格式为YYYY-M-DD
  * @param params.url 上传URL
  */
-function getDeviceReplayData(params) {
+function getDeviceReplayData(requestParams) {
     try {
         console.log('/smartlab/control/upload');
-        params.url = upload_url;
-        const url = proxy_url + '/smartlab/control/upload';
-        console.log('Request params:', params);
+        requestParams.url = params.UPLOAD_URL;
+        const url = params.PROXY_URL + '/smartlab/control/upload';
+        console.log('Request params:', requestParams);
         
-        return axios.post(url, params)
+        return axios.post(url, requestParams)
             .then(response => {
                 console.log('设备回放数据请求成功:', response.data);
                 return response.data;

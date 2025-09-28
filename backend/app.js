@@ -8,7 +8,8 @@ const userRoutes = require('./routes/user');
 const deviceRouter = require('./routes/device');
 const familyRoutes = require('./routes/family');
 const params = require('./config/params');
-
+// const upload_server = require('./routes/upload_server');
+// 后台管理服务
 const app = express();
 
 // 配置 session
@@ -17,7 +18,7 @@ app.use(session({
     resave: false,
     saveUninitialized: true,
     cookie: {
-        secure: true, // 强制使用secure cookie，因为前端使用HTTPS
+        secure: false, // 改为false，因为使用HTTP
         maxAge: 30 * 60 * 1000, // 30分钟过期
         sameSite: 'none' // 允许跨域请求
     }
@@ -27,8 +28,40 @@ app.use(session({
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
+// 动态CORS配置，支持IP白名单
 app.use(cors({
-    origin: true, // 允许所有来源
+    origin: function (origin, callback) {
+        // 允许没有origin的请求（如移动应用）
+        if (!origin) return callback(null, true);
+        
+        // 检查是否在允许的IP列表中
+        const allowedIPs = params.ALLOWED_IPS;
+        console.log(`检查CORS来源: ${origin}, 允许列表:`, allowedIPs);
+        
+        const isAllowed = allowedIPs.some(ip => {
+            if (ip === 'localhost') {
+                return origin.includes('localhost') || origin.includes('127.0.0.1');
+            }
+            // 支持域名匹配
+            if (ip.includes('.')) {
+                const result = origin.includes(ip);
+                console.log(`检查域名 ${ip}: ${result}`);
+                return result;
+            }
+            const result = origin.includes(ip);
+            console.log(`检查IP ${ip}: ${result}`);
+            return result;
+        });
+        
+        console.log(`CORS检查结果: ${isAllowed}`);
+        
+        if (isAllowed) {
+            callback(null, true);
+        } else {
+            console.log(`拒绝访问来源: ${origin}`);
+            callback(new Error('不允许的CORS来源'));
+        }
+    },
     methods: ['GET', 'POST', 'PUT', 'DELETE'],
     allowedHeaders: ['Content-Type', 'Authorization'],
     credentials: true // 允许跨域请求携带 cookie
@@ -42,11 +75,11 @@ app.use(express.urlencoded({ extended: true, limit: '50mb' }));
 app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 
 app.use((req, res, next) => {
-  res.setHeader('Content-Type', 'application/json; charset=utf-8');
-  res.setHeader('Access-Control-Allow-Origin', `${params.ACCESS_URL}`);
-  res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE');
-  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
-  next();
+res.setHeader('Content-Type', 'application/json; charset=utf-8');
+res.setHeader('Access-Control-Allow-Origin', `${params.ACCESS_URL}`);
+res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE');
+res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+next();
 });
 
 // 路由

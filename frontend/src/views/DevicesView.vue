@@ -3,7 +3,6 @@
         <template #header>
             <div class="card-header">
                 <span>设备列表</span>
-                <el-button type="primary" @click="handleAdd">添加设备</el-button>
             </div>
         </template>
 
@@ -51,6 +50,18 @@
                         <el-switch v-model="scope.row.LongLayDetect" :active-value="1" :inactive-value="0" disabled />
                     </template>
                 </el-table-column>
+                <el-table-column label="设备自校准" width="100">
+                    <template #default="scope">
+                        <el-switch v-model="scope.row.SelfCalib" :active-value="1" :inactive-value="0" disabled />
+                    </template>
+                </el-table-column>
+                <el-table-column label="语言" width="80">
+                    <template #default="scope">
+                        <el-tag :type="scope.row.language === 'zh' ? 'primary' : 'success'">
+                            {{ scope.row.language === 'zh' ? '中文' : scope.row.language === 'en' ? '英文' : scope.row.language }}
+                        </el-tag>
+                    </template>
+                </el-table-column>
                 <el-table-column label="操作" width="350">
                     <template #default="scope">
                         <el-button size="small" @click="handleEdit(scope.row)">编辑</el-button>
@@ -70,25 +81,20 @@
         </div>
     </el-card>
 
-    <!-- 添加/编辑设备对话框 -->
-    <el-dialog v-model="dialogVisible" :title="dialogType === 'add' ? '添加设备' : '编辑设备'" width="50%">
+    <!-- 编辑设备对话框 -->
+    <el-dialog v-model="dialogVisible" title="编辑设备" width="50%">
         <el-form :model="deviceForm" label-width="120px">
             <el-form-item label="设备名称">
                 <el-input v-model="deviceForm.name" />
             </el-form-item>
             <el-form-item label="设备序列号">
-                <el-input v-model="deviceForm.mac" :disabled="dialogType === 'edit'" />
+                <el-input v-model="deviceForm.mac" disabled />
             </el-form-item>
             <el-form-item label="设备高度">
                 <el-input v-model="deviceForm.radarHeight" />
             </el-form-item>
             <el-form-item label="下倾角度">
                 <el-input v-model="deviceForm.downAngle" />
-            </el-form-item>
-            <el-form-item label="所属场景" v-if="dialogType === 'add'">
-                <el-select v-model="deviceForm.sceneId" placeholder="请选择场景" @change="handleSceneChange">
-                    <el-option v-for="scene in scenes" :key="scene.id" :label="scene.name" :value="scene.id" />
-                </el-select>
             </el-form-item>
             <el-form-item label="短信推送">
                 <el-switch v-model="deviceForm.is_sendMessage" :active-value="1" :inactive-value="0" />
@@ -101,6 +107,15 @@
             </el-form-item>
             <el-form-item label="趟地检测">
                 <el-switch v-model="deviceForm.LongLayDetect" :active-value="1" :inactive-value="0" />
+            </el-form-item>
+            <el-form-item label="设备自校准">
+                <el-switch v-model="deviceForm.SelfCalib" :active-value="1" :inactive-value="0" />
+            </el-form-item>
+            <el-form-item label="语言">
+                <el-select v-model="deviceForm.language" placeholder="请选择语言">
+                    <el-option label="中文" value="zh" />
+                    <el-option label="英文" value="en" />
+                </el-select>
             </el-form-item>
         </el-form>
         <template #footer>
@@ -160,7 +175,6 @@ const devices = ref([])
 const scenes = ref([])
 const loading = ref(false)
 const dialogVisible = ref(false)
-const dialogType = ref('add')
 const currentPage = ref(1)
 const pageSize = ref(10)
 const total = ref(0)
@@ -185,8 +199,11 @@ const deviceForm = ref({
     y_location: 0,
     deltaX_room: 0,
     deltaY_room: 0,
-    radar_version: 1
+    radar_version: 1,
+    SelfCalib: 1,
+    language: 'zh'
 })
+
 
 const downloadDialogVisible = ref(false)
 const selectedDate = ref('')
@@ -227,14 +244,6 @@ const fetchScenes = async () => {
     }
 }
 
-// 处理场景选择变化
-const handleSceneChange = (sceneId) => {
-    const selectedScene = scenes.value.find(scene => scene.id === sceneId)
-    if (selectedScene) {
-        deviceForm.value.deltaX_room = selectedScene.room_x_length
-        deviceForm.value.deltaY_room = selectedScene.room_y_length
-    }
-}
 
 const fetchDevices = async () => {
     loading.value = true
@@ -262,34 +271,28 @@ const fetchDevices = async () => {
     }
 }
 
-const handleAdd = () => {
-    dialogType.value = 'add'
-    deviceForm.value = {
-        name: '',
-        mac: '',
-        radarHeight: '',
-        downAngle: '',
-        status: 1,
-        version: '',
-        isUpdate: 0,
-        percentage: 100,
-        bgimg: '',
-        sceneId: null,
-        azi_angle: '',
-        x_location: 0,
-        y_location: 0,
-        deltaX_room: 0,
-        deltaY_room: 0,
-        radar_version: 1
-    }
-    dialogVisible.value = true
-}
-
 const handleEdit = (row) => {
-    dialogType.value = 'edit'
     deviceForm.value = { ...row }
     dialogVisible.value = true
 }
+
+const handleSubmit = async () => {
+    try {
+        const response = await axios.put(`/api/devices/${deviceForm.value.id}`, deviceForm.value)
+        if (response.data.code === 200) {
+            ElMessage.success('更新成功')
+            dialogVisible.value = false
+            fetchDevices()
+        } else {
+            ElMessage.error('更新失败')
+        }
+    } catch (error) {
+        console.error('提交失败:', error)
+        ElMessage.error('提交失败')
+    }
+}
+
+
 
 const handleDelete = (row) => {
     ElMessageBox.confirm(
@@ -316,32 +319,6 @@ const handleDelete = (row) => {
     })
 }
 
-const handleSubmit = async () => {
-    try {
-        if (dialogType.value === 'add') {
-            const response = await axios.post('/api/devices', deviceForm.value)
-            if (response.data.code === 200) {
-                ElMessage.success('添加成功')
-                dialogVisible.value = false
-                fetchDevices()
-            } else {
-                ElMessage.error('添加失败')
-            }
-        } else {
-            const response = await axios.put(`/api/devices/${deviceForm.value.id}`, deviceForm.value)
-            if (response.data.code === 200) {
-                ElMessage.success('更新成功')
-                dialogVisible.value = false
-                fetchDevices()
-            } else {
-                ElMessage.error('更新失败')
-            }
-        }
-    } catch (error) {
-        console.error('提交失败:', error)
-        ElMessage.error('提交失败')
-    }
-}
 
 const handleSearch = () => {
     currentPage.value = 1

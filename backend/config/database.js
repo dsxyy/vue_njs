@@ -1,7 +1,7 @@
 const mysql = require('mysql2/promise');
 // const ENV = 'local';
-// const ENV = 'dev';
- const ENV = 'prod';
+const ENV = 'dev';
+// const ENV = 'prod';
 
 // 从独立配置文件引入IP等信息
 const dbConfig = require('./dbConfig');

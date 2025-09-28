@@ -3,6 +3,7 @@ const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const { comparePassword } = require('../utils/password');
 const { createCaptcha, verifyCaptcha } = require('../utils/captcha');
+const { getCountryCode } = require('../utils/countryCodeMap');
 
 const userController = {
     // 生成验证码
@@ -140,10 +141,12 @@ const userController = {
     // 创建新用户
     createUser: async (req, res) => {
         try {
-            const { name, phone, association_device, shareAccount, parentId, privileges, remark } = req.body;
+            const { name, phone, countryCode, countryIso2, association_device, shareAccount, parentId, privileges, remark } = req.body;
+            // 如果传入了countryIso2，则使用字典转换，否则使用传入的countryCode
+            const finalCountryCode = countryIso2 ? getCountryCode(countryIso2) : (countryCode || '86');
             const [result] = await pool.query(
-                'INSERT INTO user_info (name, phone, association_device, shareAccount, parentId, privileges, remark, showable) VALUES (?, ?, ?, ?, ?, ?, ?, 1)',
-                [name, phone, association_device, shareAccount, parentId, privileges, remark]
+                'INSERT INTO user_info (name, phone, countryCode, association_device, shareAccount, parentId, privileges, remark, showable) VALUES (?, ?, ?, ?, ?, ?, ?, ?, 1)',
+                [name, phone, finalCountryCode, association_device, shareAccount, parentId, privileges, remark]
             );
             res.status(201).json({ id: result.insertId, message: '用户创建成功' });
         } catch (error) {
@@ -155,10 +158,12 @@ const userController = {
     updateUser: async (req, res) => {
         try {
             const { id } = req.params;
-            const { name, phone, association_device, shareAccount, parentId, privileges, remark } = req.body;
+            const { name, phone, countryCode, countryIso2, association_device, shareAccount, parentId, privileges, remark } = req.body;
+            // 如果传入了countryIso2，则使用字典转换，否则使用传入的countryCode
+            const finalCountryCode = countryIso2 ? getCountryCode(countryIso2) : (countryCode || '86');
             await pool.query(
-                'UPDATE user_info SET name = ?, phone = ?, association_device = ?, shareAccount = ?, parentId = ?, privileges = ?, remark = ? WHERE id = ?',
-                [name, phone, association_device, shareAccount, parentId, privileges, remark, id]
+                'UPDATE user_info SET name = ?, phone = ?, countryCode = ?, association_device = ?, shareAccount = ?, parentId = ?, privileges = ?, remark = ? WHERE id = ?',
+                [name, phone, finalCountryCode, association_device, shareAccount, parentId, privileges, remark, id]
             );
             res.json({ message: '用户更新成功' });
         } catch (error) {

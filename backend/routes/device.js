@@ -8,8 +8,6 @@ router.get('/', deviceController.getDevices);
 // 获取设备告警信息
 router.get('/warns', deviceController.getDeviceWarns);
 
-// 创建新设备
-router.post('/', deviceController.createDevice);
 
 // 获取单个设备
 router.get('/:id', deviceController.getDeviceById);
