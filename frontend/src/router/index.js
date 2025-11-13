@@ -56,7 +56,15 @@ const routes = [
       requiresAuth: true
     }
   },
-  
+  //TODO:
+  {
+    path: '/breathe',
+    name: 'Breathe',
+    component: () => import('../views/BreatheView.vue'),
+    meta: {
+      requiresAuth: true
+    }
+  },
 ]
 
 const router = createRouter({

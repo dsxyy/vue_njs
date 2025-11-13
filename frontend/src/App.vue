@@ -38,6 +38,11 @@
             <el-icon><Monitor /></el-icon>
             <span>设备管理</span>
           </el-menu-item>
+          <!-- TODO -->
+           <el-menu-item index="/breathe">
+            <el-icon><Monitor /></el-icon>
+            <span>呼吸心跳</span>
+          </el-menu-item>
         </el-menu>
       </el-aside>
       <el-main class="main">

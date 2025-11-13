@@ -1,4 +1,5 @@
 <template>
+    <div>
     <el-card class="box-card">
         <template #header>
             <div class="card-header">
@@ -163,6 +164,7 @@
             <el-empty description="暂无告警信息" />
         </div>
     </el-dialog>
+    </div>
 </template>
 
 <script setup>

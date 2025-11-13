@@ -2,6 +2,8 @@ const express = require('express');
 const cors = require('cors');
 const path = require('path');
 const session = require('express-session');
+// TODO:
+const breatheRoutes = require('./routes/breathe');
 const versionRoutes = require('./routes/version');
 const sceneRoutes = require('./routes/scene');
 const userRoutes = require('./routes/user');
@@ -88,7 +90,8 @@ app.use('/api/scenes', sceneRoutes);
 app.use('/api/users', userRoutes);
 app.use('/api/devices', deviceRouter);
 app.use('/api/families', familyRoutes);
-
+// TODO:
+app.use('/api/breathe', breatheRoutes);
 // 错误处理中间件
 app.use((err, req, res, next) => {
   console.error(err.stack);
