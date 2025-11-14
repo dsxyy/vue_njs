@@ -11,7 +11,9 @@ export default defineConfig({
     allowedHosts: [
       'localhost',
       'test.mmradar.inchitech.com',
-      '172.16.20.202'
+      '172.16.20.202',
+      '172.16.60.61',
+      '172.16.30.184'
     ],
     proxy: {
       '/api': {

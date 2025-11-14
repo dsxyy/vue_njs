@@ -22,7 +22,7 @@ app.use(session({
     cookie: {
         secure: false, // 改为false，因为使用HTTP
         maxAge: 30 * 60 * 1000, // 30分钟过期
-        sameSite: 'none' // 允许跨域请求
+        // sameSite: 'none' // 允许跨域请求
     }
 }));
 
