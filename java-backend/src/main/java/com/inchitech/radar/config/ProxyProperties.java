@@ -9,6 +9,7 @@ public class ProxyProperties {
 
     private String smartlabBaseUrl;
     private String uploadBaseUrl;
+    private String radarDataRoot = "./radarData/radar_data";
 
     public String getSmartlabBaseUrl() {
         return smartlabBaseUrl;
@@ -24,5 +25,13 @@ public class ProxyProperties {
 
     public void setUploadBaseUrl(String uploadBaseUrl) {
         this.uploadBaseUrl = uploadBaseUrl;
+    }
+
+    public String getRadarDataRoot() {
+        return radarDataRoot;
+    }
+
+    public void setRadarDataRoot(String radarDataRoot) {
+        this.radarDataRoot = radarDataRoot;
     }
 }

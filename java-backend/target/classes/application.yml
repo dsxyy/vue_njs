@@ -35,3 +35,4 @@ app:
   proxy:
     smartlab-base-url: http://172.16.30.12:8099
     upload-base-url: http://172.16.30.12:8088/uploads
+    radar-data-root: ./radarData/radar_data

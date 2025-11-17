@@ -12,9 +12,11 @@
 /home/yaoyuan/radartest/vue_njs/java-backend/src/main/java/com/inchitech/radar/model/SysUser.java
 /home/yaoyuan/radartest/vue_njs/java-backend/src/main/java/com/inchitech/radar/service/AuthService.java
 /home/yaoyuan/radartest/vue_njs/java-backend/src/main/java/com/inchitech/radar/model/BreathHeartDevice.java
+/home/yaoyuan/radartest/vue_njs/java-backend/src/main/java/com/inchitech/radar/service/DataArchiveService.java
 /home/yaoyuan/radartest/vue_njs/java-backend/src/main/java/com/inchitech/radar/controller/GlobalExceptionHandler.java
 /home/yaoyuan/radartest/vue_njs/java-backend/src/main/java/com/inchitech/radar/config/PasswordEncoderConfig.java
 /home/yaoyuan/radartest/vue_njs/java-backend/src/main/java/com/inchitech/radar/controller/SceneController.java
+/home/yaoyuan/radartest/vue_njs/java-backend/src/main/java/com/inchitech/radar/controller/ReplayController.java
 /home/yaoyuan/radartest/vue_njs/java-backend/src/main/java/com/inchitech/radar/dto/FamilyRequest.java
 /home/yaoyuan/radartest/vue_njs/java-backend/src/main/java/com/inchitech/radar/service/UserService.java
 /home/yaoyuan/radartest/vue_njs/java-backend/src/main/java/com/inchitech/radar/model/VersionInfo.java
@@ -27,6 +29,7 @@
 /home/yaoyuan/radartest/vue_njs/java-backend/src/main/java/com/inchitech/radar/dto/LoginResponse.java
 /home/yaoyuan/radartest/vue_njs/java-backend/src/main/java/com/inchitech/radar/service/DeviceService.java
 /home/yaoyuan/radartest/vue_njs/java-backend/src/main/java/com/inchitech/radar/dto/PagedResponse.java
+/home/yaoyuan/radartest/vue_njs/java-backend/src/main/java/com/inchitech/radar/service/ReplayScheduler.java
 /home/yaoyuan/radartest/vue_njs/java-backend/src/main/java/com/inchitech/radar/model/DeviceInfo.java
 /home/yaoyuan/radartest/vue_njs/java-backend/src/main/java/com/inchitech/radar/model/FamilyInfo.java
 /home/yaoyuan/radartest/vue_njs/java-backend/src/main/java/com/inchitech/radar/config/ProxyProperties.java
@@ -37,6 +40,7 @@
 /home/yaoyuan/radartest/vue_njs/java-backend/src/main/java/com/inchitech/radar/config/WebConfig.java
 /home/yaoyuan/radartest/vue_njs/java-backend/src/main/java/com/inchitech/radar/model/UserInfo.java
 /home/yaoyuan/radartest/vue_njs/java-backend/src/main/java/com/inchitech/radar/integration/SmartLabClient.java
+/home/yaoyuan/radartest/vue_njs/java-backend/src/main/java/com/inchitech/radar/service/FileUploadService.java
 /home/yaoyuan/radartest/vue_njs/java-backend/src/main/java/com/inchitech/radar/dto/BreathDeviceRequest.java
 /home/yaoyuan/radartest/vue_njs/java-backend/src/main/java/com/inchitech/radar/service/VersionService.java
 /home/yaoyuan/radartest/vue_njs/java-backend/src/main/java/com/inchitech/radar/dto/SceneRequest.java

@@ -43,7 +43,7 @@ public class SmartLabClient {
         String url = proxyProperties.getSmartlabBaseUrl() + "/smartlab/control/upload";
         try {
             restTemplate.postForEntity(url, payload, String.class);
-            log.info("设备回放数据请求已发送");
+            log.info("设备回放数据请求已发送: {}", payload);
         } catch (Exception ex) {
             log.warn("设备回放数据请求失败: {}", ex.getMessage());
         }
